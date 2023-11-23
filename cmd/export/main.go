@@ -25,7 +25,10 @@ func main() {
 
 	sds := make([]*data.StationData, 0)
 
-	it := db.NewIter(&pebble.IterOptions{LowerBound: []byte("AAA-0"), UpperBound: []byte("ZZZ-999999999999")})
+	it, err := db.NewIter(&pebble.IterOptions{LowerBound: []byte("AAA-0"), UpperBound: []byte("ZZZ-999999999999")})
+	if err != nil {
+		panic(err)
+	}
 	for it.First(); it.Valid(); it.Next() {
 		key := it.Key()
 		value, err := it.ValueAndErr()
