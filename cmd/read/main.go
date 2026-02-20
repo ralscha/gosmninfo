@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/cockroachdb/pebble"
 	"gosmninfo.rasc.ch/internal/data"
-	"strconv"
 )
 
 func main() {
@@ -14,7 +14,12 @@ func main() {
 	}
 	defer db.Close()
 
-	it := db.NewIter(&pebble.IterOptions{LowerBound: []byte("AAA-0"), UpperBound: []byte("ZZZ-999999999999")})
+	it, err := db.NewIter(&pebble.IterOptions{LowerBound: []byte("AAA-0"), UpperBound: []byte("ZZZ-999999999999")})
+	if err != nil {
+		panic(err)
+	}
+	defer it.Close()
+
 	for it.First(); it.Valid(); it.Next() {
 		key := it.Key()
 		value, err := it.ValueAndErr()
@@ -22,18 +27,23 @@ func main() {
 			panic(err)
 		}
 		sd := data.StationData{}
-		sd.Deserialize(value)
+		if err := sd.Deserialize(value); err != nil {
+			panic(err)
+		}
 
-		sd.Station = string(key[0:3])
-		es := string(key[4:])
-		pi, err := strconv.ParseInt(es, 10, 64)
+		station, epochSeconds, err := data.ParseKey(key)
 		if err != nil {
 			panic(err)
 		}
-		sd.DateTime.EpochSeconds = pi
+		sd.Station = station
+		sd.DateTime.EpochSeconds = epochSeconds
 
 		fmt.Println(sd.Station)
 		fmt.Printf("%s: %s\n", key, value)
+	}
+
+	if err := it.Error(); err != nil {
+		panic(err)
 	}
 
 }

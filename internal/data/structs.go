@@ -1,12 +1,15 @@
 package data
 
 import (
+	"bytes"
 	"encoding/binary"
-	"fmt"
+	"errors"
 	"math"
 	"strconv"
 	"time"
 )
+
+const serializedStationDataSize = 180
 
 type DateTime struct {
 	EpochSeconds int64
@@ -14,7 +17,9 @@ type DateTime struct {
 
 func (date *DateTime) UnmarshalCSV(csv string) (err error) {
 	ti, err := time.Parse("200601021504", csv)
-	date.EpochSeconds = ti.Unix()
+	if err == nil {
+		date.EpochSeconds = ti.Unix()
+	}
 	return err
 }
 
@@ -29,7 +34,7 @@ type NullFloat64 struct {
 
 func (value *NullFloat64) UnmarshalCSV(csv string) (err error) {
 	if csv != "-" {
-		v, err := strconv.ParseFloat(csv, 32)
+		v, err := strconv.ParseFloat(csv, 64)
 		if err != nil {
 			return err
 		}
@@ -74,11 +79,15 @@ type StationData struct {
 }
 
 func (d *StationData) Key() []byte {
-	return []byte(fmt.Sprintf("%s-%d", d.Station, d.DateTime.EpochSeconds))
+	key := make([]byte, 0, len(d.Station)+1+20)
+	key = append(key, d.Station...)
+	key = append(key, '-')
+	key = strconv.AppendInt(key, d.DateTime.EpochSeconds, 10)
+	return key
 }
 
 func (d *StationData) Serialize() ([]byte, error) {
-	var data []byte
+	data := make([]byte, 0, serializedStationDataSize)
 
 	data = append(data, boolToByte(d.AirTemperature.Valid))
 	data = append(data, float64ToByte(d.AirTemperature.Float64)...)
@@ -143,7 +152,11 @@ func (d *StationData) Serialize() ([]byte, error) {
 	return data, nil
 }
 
-func (d *StationData) Deserialize(data []byte) {
+func (d *StationData) Deserialize(data []byte) error {
+	if len(data) < serializedStationDataSize {
+		return errors.New("invalid station data payload")
+	}
+
 	d.AirTemperature.Valid = byteToBool(data[0])
 	d.AirTemperature.Float64 = byteToFloat64(data[1:9])
 
@@ -203,6 +216,22 @@ func (d *StationData) Deserialize(data []byte) {
 
 	d.DewPointTower.Valid = byteToBool(data[171])
 	d.DewPointTower.Float64 = byteToFloat64(data[172:180])
+
+	return nil
+}
+
+func ParseKey(key []byte) (string, int64, error) {
+	idx := bytes.LastIndexByte(key, '-')
+	if idx <= 0 || idx >= len(key)-1 {
+		return "", 0, errors.New("invalid key format")
+	}
+
+	epochSeconds, err := strconv.ParseInt(string(key[idx+1:]), 10, 64)
+	if err != nil {
+		return "", 0, err
+	}
+
+	return string(key[:idx]), epochSeconds, nil
 }
 
 func boolToByte(b bool) byte {
