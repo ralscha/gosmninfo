@@ -14,7 +14,7 @@ func main() {
 	}
 	defer db.Close()
 
-	it, err := db.NewIter(&pebble.IterOptions{LowerBound: []byte("AAA-0"), UpperBound: []byte("ZZZ-999999999999")})
+	it, err := db.NewIter(&pebble.IterOptions{})
 	if err != nil {
 		panic(err)
 	}

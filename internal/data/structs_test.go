@@ -79,3 +79,28 @@ func TestDateTimeUnmarshalCSVDoesNotOverwriteOnError(t *testing.T) {
 		t.Fatalf("EpochSeconds overwritten on error: got %d, want %d", date.EpochSeconds, 12345)
 	}
 }
+
+func TestDeserializeRejectsLongPayload(t *testing.T) {
+	var sd StationData
+	if err := sd.Deserialize(make([]byte, serializedStationDataSize+1)); err == nil {
+		t.Fatalf("Deserialize() expected error for long payload")
+	}
+}
+
+func TestNullFloat64CSV(t *testing.T) {
+	value := NullFloat64{Float64: 42, Valid: true}
+	if err := value.UnmarshalCSV("-"); err != nil {
+		t.Fatalf("UnmarshalCSV() error = %v", err)
+	}
+	if value.Valid || value.Float64 != 0 {
+		t.Fatalf("dash should reset value, got %+v", value)
+	}
+
+	out, err := value.MarshalCSV()
+	if err != nil {
+		t.Fatalf("MarshalCSV() error = %v", err)
+	}
+	if out != "-" {
+		t.Fatalf("MarshalCSV() = %q, want %q", out, "-")
+	}
+}

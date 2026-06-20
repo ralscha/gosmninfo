@@ -26,25 +26,21 @@ func main() {
 	resp, err := httpClient.R().Get(SwissMetNetURL)
 	if err != nil {
 		log.Warn().Err(err).Msg("Failed to get data from SwissMetNet")
-	} else {
-		if resp.IsSuccess() {
-			if outputFile, err := os.Create("data.csv"); err == nil {
-				defer outputFile.Close()
-				body := resp.Body()
-				_, err = outputFile.Write(body)
-				if err != nil {
-					log.Warn().Err(err).Msg("Failed to write data to file")
-				}
-				err := processData(body)
-				if err != nil {
-					log.Warn().Err(err).Msg("Failed to process data")
-				}
-			} else {
-				log.Warn().Err(err).Msg("Failed to write response to file")
-			}
-		}
+		return
+	}
+	if !resp.IsSuccess() {
+		log.Warn().Int("status", resp.StatusCode()).Msg("SwissMetNet returned an unsuccessful response")
+		return
 	}
 
+	body := resp.Body()
+	if err := os.WriteFile("data.csv", body, 0644); err != nil {
+		log.Warn().Err(err).Msg("Failed to write response to file")
+		return
+	}
+	if err := processData(body); err != nil {
+		log.Warn().Err(err).Msg("Failed to process data")
+	}
 }
 
 func processData(da []byte) error {

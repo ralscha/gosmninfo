@@ -31,16 +31,37 @@ tasks:
       - go mod verify
 
   build-runner:
+    env:
+      GOOS: linux
+      GOARCH: amd64
     cmds:
-      - GOOS=linux GOARCH=amd64 go build -ldflags='-s' -o=./bin/linux_amd64/runner ./cmd/runner
+      - go build -ldflags='-s' -o=./bin/linux_amd64/runner ./cmd/runner
 
   build-export:
+    env:
+      GOOS: linux
+      GOARCH: amd64
     cmds:
-      - GOOS=linux GOARCH=amd64 go build -ldflags='-s' -o=./bin/linux_amd64/export ./cmd/export
+      - go build -ldflags='-s' -o=./bin/linux_amd64/export ./cmd/export
+
+  build-read:
+    env:
+      GOOS: linux
+      GOARCH: amd64
+    cmds:
+      - go build -ldflags='-s' -o=./bin/linux_amd64/read ./cmd/read
 
   build:
-    deps: [build-runner, build-export]
+    deps: [build-runner, build-export, build-read]
 
   run:
     cmds:
-      - ./bin/runner
+      - go run ./cmd/runner
+
+  export:
+    cmds:
+      - go run ./cmd/export
+
+  read:
+    cmds:
+      - go run ./cmd/read
