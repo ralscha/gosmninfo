@@ -1,6 +1,6 @@
 module gosmninfo.rasc.ch
 
-go 1.27.0
+go 1.27.1
 
 require (
 	github.com/cockroachdb/pebble v1.1.5
@@ -21,7 +21,7 @@ require (
 	github.com/getsentry/sentry-go v0.49.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
-	github.com/klauspost/compress v1.19.2 // indirect
+	github.com/klauspost/compress v1.20.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
