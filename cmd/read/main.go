@@ -1,49 +1,43 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
+	"io"
+	"log"
+	"os"
 
 	"github.com/cockroachdb/pebble"
-	"gosmninfo.rasc.ch/internal/data"
+	"gosmninfo.rasc.ch/internal/csvoutput"
+	"gosmninfo.rasc.ch/internal/store"
 )
 
 func main() {
-	db, err := pebble.Open("smninfo", &pebble.Options{})
+	dbPath := flag.String("db", "smninfo", "Pebble database path")
+	station := flag.String("station", "", "show only this station")
+	limit := flag.Int("limit", 0, "maximum records to show (0 means all)")
+	flag.Parse()
+
+	if err := run(*dbPath, *station, *limit, os.Stdout); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run(dbPath, station string, limit int, output io.Writer) (err error) {
+	if dbPath == "" {
+		return fmt.Errorf("database path is empty")
+	}
+	db, err := pebble.Open(dbPath, &pebble.Options{ReadOnly: true})
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("open database: %w", err)
 	}
-	defer db.Close()
-
-	it, err := db.NewIter(&pebble.IterOptions{})
-	if err != nil {
-		panic(err)
-	}
-	defer it.Close()
-
-	for it.First(); it.Valid(); it.Next() {
-		key := it.Key()
-		value, err := it.ValueAndErr()
-		if err != nil {
-			panic(err)
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close database: %w", closeErr))
 		}
-		sd := data.StationData{}
-		if err := sd.Deserialize(value); err != nil {
-			panic(err)
-		}
+	}()
 
-		station, epochSeconds, err := data.ParseKey(key)
-		if err != nil {
-			panic(err)
-		}
-		sd.Station = station
-		sd.DateTime.EpochSeconds = epochSeconds
-
-		fmt.Println(sd.Station)
-		fmt.Printf("%s: %s\n", key, value)
-	}
-
-	if err := it.Error(); err != nil {
-		panic(err)
-	}
-
+	readErr := csvoutput.Write(output, db, store.Query{Station: station, Limit: limit})
+	return readErr
 }

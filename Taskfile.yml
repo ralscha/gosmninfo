@@ -12,6 +12,10 @@ tasks:
       - go fmt ./...
       - go mod tidy -v
 
+  test:
+    cmds:
+      - go test ./...
+
   lint:
     cmds:
       - golangci-lint run -v --timeout 5m
@@ -19,7 +23,7 @@ tasks:
   audit:
     cmds:
       - go vet ./...
-      - go run honnef.co/go/tools/cmd/staticcheck@latest -checks=all,-ST1000,-U1000 ./...
+      - go run honnef.co/go/tools/cmd/staticcheck@latest '-checks=all,-ST1000,-U1000' ./...
       - go mod verify
 
   upgrade-libraries:

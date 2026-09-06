@@ -1,6 +1,11 @@
 package data
 
-import "testing"
+import (
+	"encoding/binary"
+	"math"
+	"testing"
+	"time"
+)
 
 func TestStationDataSerializeDeserializeRoundTrip(t *testing.T) {
 	src := StationData{
@@ -87,6 +92,40 @@ func TestDeserializeRejectsLongPayload(t *testing.T) {
 	}
 }
 
+func TestDeserializeRejectsInvalidValidityMarkerWithoutMutation(t *testing.T) {
+	sd := StationData{AirTemperature: NullFloat64{Float64: 42, Valid: true}}
+	payload := make([]byte, serializedStationDataSize)
+	payload[0] = 2
+
+	if err := sd.Deserialize(payload); err == nil {
+		t.Fatal("Deserialize() expected an error")
+	}
+	if sd.AirTemperature.Float64 != 42 || !sd.AirTemperature.Valid {
+		t.Fatalf("Deserialize() mutated receiver on error: %+v", sd.AirTemperature)
+	}
+}
+
+func TestDeserializeRejectsNonFiniteValueWithoutMutation(t *testing.T) {
+	sd := StationData{AirTemperature: NullFloat64{Float64: 42, Valid: true}}
+	payload := make([]byte, serializedStationDataSize)
+	payload[0] = 1
+	binary.BigEndian.PutUint64(payload[1:9], math.Float64bits(math.Inf(1)))
+
+	if err := sd.Deserialize(payload); err == nil {
+		t.Fatal("Deserialize() expected an error")
+	}
+	if sd.AirTemperature.Float64 != 42 || !sd.AirTemperature.Valid {
+		t.Fatalf("Deserialize() mutated receiver on error: %+v", sd.AirTemperature)
+	}
+}
+
+func TestSerializeRejectsNonFiniteMeasurement(t *testing.T) {
+	sd := StationData{AirTemperature: NullFloat64{Float64: math.NaN(), Valid: true}}
+	if _, err := sd.Serialize(); err == nil {
+		t.Fatal("Serialize() expected an error")
+	}
+}
+
 func TestNullFloat64CSV(t *testing.T) {
 	value := NullFloat64{Float64: 42, Valid: true}
 	if err := value.UnmarshalCSV("-"); err != nil {
@@ -102,5 +141,35 @@ func TestNullFloat64CSV(t *testing.T) {
 	}
 	if out != "-" {
 		t.Fatalf("MarshalCSV() = %q, want %q", out, "-")
+	}
+}
+
+func TestNullFloat64CSVRejectsNonFiniteValues(t *testing.T) {
+	for _, input := range []string{"NaN", "+Inf", "-Inf"} {
+		var value NullFloat64
+		if err := value.UnmarshalCSV(input); err == nil {
+			t.Errorf("UnmarshalCSV(%q) expected an error", input)
+		}
+	}
+}
+
+func TestDateTimeCSVAcceptsSourceAndExportFormats(t *testing.T) {
+	want := time.Date(2026, time.September, 6, 12, 30, 0, 0, time.UTC).Unix()
+	for _, input := range []string{"202609061230", "2026-09-06T12:30:00.000Z"} {
+		var date DateTime
+		if err := date.UnmarshalCSV(input); err != nil {
+			t.Fatalf("UnmarshalCSV(%q) error = %v", input, err)
+		}
+		if date.EpochSeconds != want {
+			t.Errorf("UnmarshalCSV(%q) epoch = %d, want %d", input, date.EpochSeconds, want)
+		}
+	}
+}
+
+func TestCSVHeaderReturnsCopy(t *testing.T) {
+	header := CSVHeader()
+	header[0] = "changed"
+	if got := CSVHeader()[0]; got != "Station/Location" {
+		t.Fatalf("CSVHeader()[0] = %q", got)
 	}
 }

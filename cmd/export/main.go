@@ -1,64 +1,48 @@
 package main
 
 import (
-	"os"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"log"
 
 	"github.com/cockroachdb/pebble"
-	"github.com/gocarina/gocsv"
-	"gosmninfo.rasc.ch/internal/data"
+	"gosmninfo.rasc.ch/internal/csvoutput"
+	"gosmninfo.rasc.ch/internal/fileutil"
+	"gosmninfo.rasc.ch/internal/store"
 )
 
 func main() {
-	// open database and export everything in the form of a CSV file
-	db, err := pebble.Open("smninfo", &pebble.Options{})
-	if err != nil {
-		panic(err)
+	dbPath := flag.String("db", "smninfo", "Pebble database path")
+	outputPath := flag.String("out", "smninfo.csv", "output CSV path")
+	station := flag.String("station", "", "export only this station")
+	flag.Parse()
+
+	if err := run(*dbPath, *outputPath, *station); err != nil {
+		log.Fatal(err)
 	}
-	defer db.Close()
+}
 
-	csvFile := "smninfo.csv"
-	f, err := os.Create(csvFile)
-	if err != nil {
-		panic(err)
+func run(dbPath, outputPath, station string) (err error) {
+	if dbPath == "" {
+		return fmt.Errorf("database path is empty")
 	}
-	defer f.Close()
-
-	sds := make([]*data.StationData, 0)
-
-	it, err := db.NewIter(&pebble.IterOptions{})
+	db, err := pebble.Open(dbPath, &pebble.Options{ReadOnly: true})
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("open database: %w", err)
 	}
-	defer it.Close()
-
-	for it.First(); it.Valid(); it.Next() {
-		key := it.Key()
-		value, err := it.ValueAndErr()
-		if err != nil {
-			panic(err)
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close database: %w", closeErr))
 		}
-		sd := data.StationData{}
-		if err := sd.Deserialize(value); err != nil {
-			panic(err)
-		}
+	}()
 
-		station, epochSeconds, err := data.ParseKey(key)
-		if err != nil {
-			panic(err)
-		}
-		sd.Station = station
-		sd.DateTime.EpochSeconds = epochSeconds
-
-		sds = append(sds, &sd)
+	write := func(output io.Writer) error {
+		return csvoutput.Write(output, db, store.Query{Station: station})
 	}
-
-	if err := it.Error(); err != nil {
-		panic(err)
+	if err := fileutil.WriteAtomically(outputPath, 0o644, write); err != nil {
+		return fmt.Errorf("export CSV: %w", err)
 	}
-
-	err = gocsv.MarshalFile(sds, f)
-	if err != nil {
-		panic(err)
-	}
-
+	return nil
 }

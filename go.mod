@@ -2,12 +2,7 @@ module gosmninfo.rasc.ch
 
 go 1.27.1
 
-require (
-	github.com/cockroachdb/pebble v1.1.5
-	github.com/go-resty/resty/v2 v2.17.2
-	github.com/gocarina/gocsv v0.0.0-20260824135904-1713ebc4797a
-	github.com/rs/zerolog v1.35.1
-)
+require github.com/cockroachdb/pebble v1.1.5
 
 require (
 	github.com/DataDog/zstd v1.5.7 // indirect
@@ -24,8 +19,6 @@ require (
 	github.com/klauspost/compress v1.20.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/mattn/go-colorable v0.1.15 // indirect
-	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.24.1 // indirect
@@ -34,7 +27,6 @@ require (
 	github.com/prometheus/procfs v0.22.0 // indirect
 	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	golang.org/x/exp v0.0.0-20260824195058-e88cd73687aa // indirect
-	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
