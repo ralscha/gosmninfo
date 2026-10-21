@@ -1,6 +1,6 @@
 module gosmninfo.rasc.ch
 
-go 1.27.2
+go 1.27.3
 
 require github.com/cockroachdb/pebble v1.1.5
 
